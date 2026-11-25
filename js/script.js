@@ -121,6 +121,39 @@ const addExpenseBtn = document.getElementById("add-expense-btn");
 const quickAddExpenseBtn = document.getElementById("quick-add-expense-btn");
 const emptyAddExpenseBtn = document.getElementById("empty-add-expense-btn");
 
+// Dashboard section elements
+const dashboardMonthInput = document.getElementById("dashboard-month-input");
+const dashTotalSpentEl = document.getElementById("dash-total-spent");
+const dashTotalMetaEl = document.getElementById("dash-total-meta");
+const dashMonthlyBudgetEl = document.getElementById("dash-monthly-budget");
+const dashBudgetMetaEl = document.getElementById("dash-budget-meta");
+const dashRemainingBalanceEl = document.getElementById("dash-remaining-balance");
+const dashRemainingMetaEl = document.getElementById("dash-remaining-meta");
+const dashTxCountEl = document.getElementById("dash-tx-count");
+const dashTxMetaEl = document.getElementById("dash-tx-meta");
+const dashProgressSummaryEl = document.getElementById("dash-progress-summary");
+const dashProgressPercentEl = document.getElementById("dash-progress-percent");
+const dashProgressTrackEl = document.getElementById("dash-progress-track");
+const dashProgressFillEl = document.getElementById("dash-progress-fill");
+const dashBudgetAlertEl = document.getElementById("dash-budget-alert");
+const dashCategorySubtitleEl = document.getElementById("dash-category-subtitle");
+const dashCategoryChartEl = document.getElementById("dash-category-chart");
+const dashMonthlyChartEl = document.getElementById("dash-monthly-chart");
+const recentTransactionsListEl = document.getElementById("recent-transactions-list");
+
+// Analytics section elements
+const statTotalSpendEl = document.getElementById("stat-total-spend");
+const statTotalMetaEl = document.getElementById("stat-total-meta");
+const statTopCategoryEl = document.getElementById("stat-top-category");
+const statTopCategoryMetaEl = document.getElementById("stat-top-category-meta");
+const statAvgTransactionEl = document.getElementById("stat-avg-transaction");
+const statAvgMetaEl = document.getElementById("stat-avg-meta");
+const statTxCountEl = document.getElementById("stat-tx-count");
+const statMonthlyAvgMetaEl = document.getElementById("stat-monthly-avg-meta");
+const analyticsCategoryChartEl = document.getElementById("analytics-category-chart");
+const analyticsMonthlyChartEl = document.getElementById("analytics-monthly-chart");
+const analyticsMonthlyTbody = document.getElementById("analytics-monthly-tbody");
+
 // ==========================================================================
 // Utility & Formatting Helpers
 // ==========================================================================
@@ -164,6 +197,33 @@ function formatMonthLabel(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(year, month - 1, 1);
   return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+/**
+ * Formats a YYYY-MM string into a short month abbreviation (e.g., "Nov").
+ */
+function formatShortMonth(monthKey) {
+  if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) return monthKey || "";
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleDateString("en-US", { month: "short" });
+}
+
+/**
+ * Returns the current local month as YYYY-MM.
+ */
+function getCurrentMonthKey() {
+  return getTodayDateString().slice(0, 7);
+}
+
+/**
+ * Formats compact amounts for bar chart labels (e.g., "$1.4k" or "$450").
+ */
+function formatCompactCurrency(amount) {
+  if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(1)}k`;
+  }
+  return `$${Math.round(amount)}`;
 }
 
 /**
@@ -733,12 +793,479 @@ function closeConfirmModal() {
   pendingConfirmAction = null;
 }
 
+// ==========================================================================
+// Calculations, Charts, Dashboard & Analytics (Priority 1)
+// ==========================================================================
+
+function getSelectedDashboardMonth() {
+  if (dashboardMonthInput && /^\d{4}-\d{2}$/.test(dashboardMonthInput.value)) {
+    return dashboardMonthInput.value;
+  }
+  return getCurrentMonthKey();
+}
+
+function getExpensesForMonth(monthKey) {
+  return expenses.filter((expense) => expense.date.startsWith(monthKey));
+}
+
+function calculateTotalSpending(expenseList) {
+  return expenseList.reduce((sum, item) => sum + item.amount, 0);
+}
+
+/**
+ * Groups an expense array by category and returns sorted breakdown items.
+ */
+function calculateCategoryBreakdown(expenseList) {
+  const total = calculateTotalSpending(expenseList);
+  const totalsByCategory = {};
+
+  expenseList.forEach((expense) => {
+    totalsByCategory[expense.category] = (totalsByCategory[expense.category] || 0) + expense.amount;
+  });
+
+  return Object.entries(totalsByCategory)
+    .map(([category, amount]) => {
+      const meta = getCategoryMeta(category);
+      const percentage = total > 0 ? (amount / total) * 100 : 0;
+      return {
+        category,
+        amount: Math.round(amount * 100) / 100,
+        percentage,
+        color: meta.color,
+        slug: meta.slug
+      };
+    })
+    .sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * Builds a 6-month series ending at anchorMonthKey from the shared expenses array.
+ */
+function getMonthlyComparisonSeries(anchorMonthKey, count = 6) {
+  const [anchorYear, anchorMonth] = anchorMonthKey.split("-").map(Number);
+  const series = [];
+
+  for (let offset = count - 1; offset >= 0; offset -= 1) {
+    const date = new Date(anchorYear, anchorMonth - 1 - offset, 1);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const monthKey = `${year}-${month}`;
+    const total = calculateTotalSpending(getExpensesForMonth(monthKey));
+
+    series.push({
+      monthKey,
+      label: formatShortMonth(monthKey),
+      total: Math.round(total * 100) / 100
+    });
+  }
+
+  return series;
+}
+
+/**
+ * Renders a CSS conic-gradient doughnut chart and category legend safely.
+ */
+function renderDoughnutChart(containerEl, expenseList, options = {}) {
+  if (!containerEl) return;
+  containerEl.textContent = "";
+
+  const breakdown = calculateCategoryBreakdown(expenseList);
+  const total = calculateTotalSpending(expenseList);
+
+  if (breakdown.length === 0 || total <= 0) {
+    const emptyBox = document.createElement("div");
+    emptyBox.className = "chart-empty";
+    emptyBox.textContent = options.emptyMessage || "No expense data to chart yet.";
+    containerEl.appendChild(emptyBox);
+    return;
+  }
+
+  // Build CSS conic-gradient stops from category percentages
+  let currentPercent = 0;
+  const stops = breakdown.map((item) => {
+    const start = currentPercent;
+    const end = currentPercent + item.percentage;
+    currentPercent = end;
+    return `${item.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+  });
+
+  const ring = document.createElement("div");
+  ring.className = options.large ? "doughnut-ring doughnut-ring-lg" : "doughnut-ring";
+  ring.setAttribute("role", "img");
+  ring.setAttribute("aria-label", "Category spending breakdown doughnut chart");
+  ring.style.background = `conic-gradient(${stops.join(", ")})`;
+
+  const hole = document.createElement("div");
+  hole.className = "doughnut-hole";
+
+  const centerVal = document.createElement("span");
+  centerVal.className = "doughnut-total tabular-nums";
+  const centerCaption = document.createElement("span");
+  centerCaption.className = "doughnut-caption";
+
+  if (options.centerMode === "categories") {
+    centerVal.textContent = String(breakdown.length);
+    centerCaption.textContent = breakdown.length === 1 ? "Category" : "Categories";
+  } else {
+    centerVal.textContent = formatCurrency(total);
+    centerCaption.textContent = "Total Spent";
+  }
+
+  hole.appendChild(centerVal);
+  hole.appendChild(centerCaption);
+  ring.appendChild(hole);
+
+  const legend = document.createElement("ul");
+  legend.className = "chart-legend";
+
+  breakdown.forEach((item) => {
+    const li = document.createElement("li");
+
+    const dot = document.createElement("span");
+    dot.className = "legend-dot";
+    dot.style.backgroundColor = item.color;
+
+    const name = document.createElement("span");
+    name.className = "legend-name";
+    name.textContent = item.category;
+
+    const val = document.createElement("span");
+    val.className = "legend-val tabular-nums";
+    val.textContent = `${formatCurrency(item.amount)} (${Math.round(item.percentage)}%)`;
+
+    li.appendChild(dot);
+    li.appendChild(name);
+    li.appendChild(val);
+    legend.appendChild(li);
+  });
+
+  containerEl.appendChild(ring);
+  containerEl.appendChild(legend);
+}
+
+/**
+ * Renders a 6-month vertical bar chart using CSS flex/grid columns.
+ */
+function renderMonthlyBarChart(containerEl, series, highlightMonthKey) {
+  if (!containerEl) return;
+  containerEl.textContent = "";
+
+  const maxTotal = series.reduce((max, item) => Math.max(max, item.total), 0);
+
+  if (maxTotal <= 0) {
+    const emptyBox = document.createElement("div");
+    emptyBox.className = "chart-empty";
+    emptyBox.textContent = "Add expenses to view your 6-month spending comparison.";
+    containerEl.appendChild(emptyBox);
+    return;
+  }
+
+  const chart = document.createElement("div");
+  chart.className = "bar-chart-placeholder";
+  chart.setAttribute("role", "img");
+  chart.setAttribute("aria-label", "Monthly spending comparison bar chart");
+
+  series.forEach((item) => {
+    const col = document.createElement("div");
+    col.className = item.monthKey === highlightMonthKey ? "bar-column is-current" : "bar-column";
+
+    const valEl = document.createElement("span");
+    valEl.className = "bar-value tabular-nums";
+    valEl.textContent = item.total > 0 ? formatCompactCurrency(item.total) : "$0";
+
+    const track = document.createElement("div");
+    track.className = "bar-track";
+
+    const fill = document.createElement("div");
+    fill.className = "bar-fill";
+    const heightPercent = item.total > 0 ? Math.max(6, Math.round((item.total / maxTotal) * 100)) : 0;
+    fill.style.height = `${heightPercent}%`;
+    fill.title = `${formatMonthLabel(item.monthKey)}: ${formatCurrency(item.total)}`;
+
+    const label = document.createElement("span");
+    label.className = "bar-label";
+    label.textContent = item.label;
+
+    track.appendChild(fill);
+    col.appendChild(valEl);
+    col.appendChild(track);
+    col.appendChild(label);
+    chart.appendChild(col);
+  });
+
+  containerEl.appendChild(chart);
+}
+
+/**
+ * Renders the 5 most recent transactions on the Dashboard.
+ */
+function renderRecentTransactions() {
+  if (!recentTransactionsListEl) return;
+  recentTransactionsListEl.textContent = "";
+
+  const recentFive = [...expenses]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 5);
+
+  if (recentFive.length === 0) {
+    const li = document.createElement("li");
+    li.className = "recent-item";
+    const emptyMsg = document.createElement("p");
+    emptyMsg.className = "recent-meta";
+    emptyMsg.textContent = "No recent transactions yet. Click Add Expense to record one.";
+    li.appendChild(emptyMsg);
+    recentTransactionsListEl.appendChild(li);
+    return;
+  }
+
+  recentFive.forEach((expense) => {
+    const meta = getCategoryMeta(expense.category);
+    const li = document.createElement("li");
+    li.className = "recent-item";
+
+    const left = document.createElement("div");
+    left.className = "recent-left";
+
+    const badge = document.createElement("span");
+    badge.className = `category-badge cat-${meta.slug}`;
+    badge.setAttribute("aria-hidden", "true");
+    badge.textContent = meta.short;
+
+    const info = document.createElement("div");
+    const title = document.createElement("p");
+    title.className = "recent-title";
+    title.textContent = expense.title;
+
+    const sub = document.createElement("p");
+    sub.className = "recent-meta";
+    sub.textContent = `${expense.category} • ${expense.date} • ${expense.paymentMethod}`;
+
+    info.appendChild(title);
+    info.appendChild(sub);
+    left.appendChild(badge);
+    left.appendChild(info);
+
+    const amount = document.createElement("span");
+    amount.className = "recent-amount tabular-nums";
+    amount.textContent = `-${formatCurrency(expense.amount)}`;
+
+    li.appendChild(left);
+    li.appendChild(amount);
+    recentTransactionsListEl.appendChild(li);
+  });
+}
+
+/**
+ * Updates all Dashboard KPIs, progress bar, charts, and recent transactions.
+ */
+function renderDashboard() {
+  const selectedMonth = getSelectedDashboardMonth();
+  const monthLabel = formatMonthLabel(selectedMonth);
+  const monthExpenses = getExpensesForMonth(selectedMonth);
+  const monthSpent = calculateTotalSpending(monthExpenses);
+  const monthBudget = budgets[selectedMonth] || 0;
+  const hasBudget = monthBudget > 0;
+  const remaining = hasBudget ? monthBudget - monthSpent : 0;
+  const usagePercent = hasBudget ? (monthSpent / monthBudget) * 100 : 0;
+
+  if (dashTotalSpentEl) dashTotalSpentEl.textContent = formatCurrency(monthSpent);
+  if (dashTotalMetaEl) dashTotalMetaEl.textContent = `Spending in ${monthLabel}`;
+
+  if (dashMonthlyBudgetEl) dashMonthlyBudgetEl.textContent = formatCurrency(monthBudget);
+  if (dashBudgetMetaEl) {
+    dashBudgetMetaEl.textContent = hasBudget ? `Target for ${monthLabel}` : `No budget set for ${monthLabel}`;
+  }
+
+  if (dashRemainingBalanceEl) {
+    dashRemainingBalanceEl.textContent = hasBudget ? formatCurrency(remaining) : "$0.00";
+    dashRemainingBalanceEl.classList.toggle("text-rose", hasBudget && remaining < 0);
+    dashRemainingBalanceEl.classList.toggle("text-emerald", hasBudget && remaining >= 0);
+  }
+  if (dashRemainingMetaEl) {
+    if (!hasBudget) {
+      dashRemainingMetaEl.textContent = "Set a monthly budget to track";
+    } else if (remaining < 0) {
+      dashRemainingMetaEl.textContent = `Over budget by ${formatCurrency(Math.abs(remaining))}`;
+    } else {
+      dashRemainingMetaEl.textContent = `${Math.max(0, 100 - usagePercent).toFixed(1)}% remaining`;
+    }
+  }
+
+  if (dashTxCountEl) dashTxCountEl.textContent = String(monthExpenses.length);
+  if (dashTxMetaEl) {
+    const noun = monthExpenses.length === 1 ? "entry" : "entries";
+    dashTxMetaEl.textContent = `${monthExpenses.length} ${noun} in ${monthLabel}`;
+  }
+
+  // Dashboard Budget Progress Bar & Threshold Alert
+  if (dashProgressSummaryEl && dashProgressPercentEl && dashProgressFillEl && dashProgressTrackEl) {
+    const clampedWidth = Math.min(100, Math.max(0, usagePercent));
+    dashProgressFillEl.style.width = `${clampedWidth.toFixed(1)}%`;
+    dashProgressFillEl.classList.toggle("is-warning", hasBudget && usagePercent >= 80 && usagePercent < 100);
+    dashProgressFillEl.classList.toggle("is-exceeded", hasBudget && usagePercent >= 100);
+    dashProgressTrackEl.setAttribute("aria-valuenow", String(Math.round(clampedWidth)));
+
+    if (!hasBudget) {
+      dashProgressSummaryEl.textContent = `${formatCurrency(monthSpent)} spent (no budget set for ${monthLabel})`;
+      dashProgressPercentEl.textContent = "—";
+    } else {
+      dashProgressSummaryEl.textContent = `${formatCurrency(monthSpent)} spent of ${formatCurrency(monthBudget)}`;
+      dashProgressPercentEl.textContent = `${usagePercent.toFixed(1)}% used`;
+    }
+  }
+
+  if (dashBudgetAlertEl) {
+    if (hasBudget && usagePercent >= 100) {
+      dashBudgetAlertEl.hidden = false;
+      dashBudgetAlertEl.className = "alert-box alert-danger";
+      dashBudgetAlertEl.textContent = `Budget exceeded for ${monthLabel}: ${usagePercent.toFixed(1)}% used (${formatCurrency(monthSpent)} of ${formatCurrency(monthBudget)}).`;
+    } else if (hasBudget && usagePercent >= 80) {
+      dashBudgetAlertEl.hidden = false;
+      dashBudgetAlertEl.className = "alert-box alert-warning";
+      dashBudgetAlertEl.textContent = `Budget warning for ${monthLabel}: You have reached ${usagePercent.toFixed(1)}% of your monthly budget.`;
+    } else {
+      dashBudgetAlertEl.hidden = true;
+      dashBudgetAlertEl.textContent = "";
+    }
+  }
+
+  if (dashCategorySubtitleEl) {
+    dashCategorySubtitleEl.textContent = `Distribution for ${monthLabel}`;
+  }
+
+  renderDoughnutChart(dashCategoryChartEl, monthExpenses, {
+    emptyMessage: `No expenses recorded in ${monthLabel}.`
+  });
+  renderMonthlyBarChart(
+    dashMonthlyChartEl,
+    getMonthlyComparisonSeries(selectedMonth, 6),
+    selectedMonth
+  );
+  renderRecentTransactions();
+}
+
+/**
+ * Updates all Analytics statistics, charts, and monthly breakdown table.
+ */
+function renderAnalytics() {
+  const totalSpend = calculateTotalSpending(expenses);
+  const totalCount = expenses.length;
+  const avgTransaction = totalCount > 0 ? totalSpend / totalCount : 0;
+  const breakdown = calculateCategoryBreakdown(expenses);
+
+  // Group all expenses by YYYY-MM
+  const monthBuckets = {};
+  expenses.forEach((expense) => {
+    const monthKey = expense.date.slice(0, 7);
+    if (!monthBuckets[monthKey]) {
+      monthBuckets[monthKey] = [];
+    }
+    monthBuckets[monthKey].push(expense);
+  });
+
+  const activeMonths = Object.keys(monthBuckets).sort((a, b) => b.localeCompare(a));
+  const monthlyAvg = activeMonths.length > 0 ? totalSpend / activeMonths.length : 0;
+
+  if (statTotalSpendEl) statTotalSpendEl.textContent = formatCurrency(totalSpend);
+  if (statTotalMetaEl) {
+    statTotalMetaEl.textContent =
+      activeMonths.length > 0
+        ? `Across ${activeMonths.length} ${activeMonths.length === 1 ? "month" : "months"}`
+        : "No expenses recorded";
+  }
+
+  if (statTopCategoryEl && statTopCategoryMetaEl) {
+    if (breakdown.length > 0) {
+      const top = breakdown[0];
+      statTopCategoryEl.textContent = top.category;
+      statTopCategoryMetaEl.textContent = `${formatCurrency(top.amount)} (${Math.round(top.percentage)}% of total)`;
+    } else {
+      statTopCategoryEl.textContent = "—";
+      statTopCategoryMetaEl.textContent = "No expenses yet";
+    }
+  }
+
+  if (statAvgTransactionEl) statAvgTransactionEl.textContent = formatCurrency(avgTransaction);
+  if (statAvgMetaEl) {
+    statAvgMetaEl.textContent = totalCount > 0 ? "Average per transaction" : "No transactions yet";
+  }
+
+  if (statTxCountEl) statTxCountEl.textContent = String(totalCount);
+  if (statMonthlyAvgMetaEl) statMonthlyAvgMetaEl.textContent = `Monthly avg: ${formatCurrency(monthlyAvg)}`;
+
+  const anchorMonth = getSelectedDashboardMonth();
+  renderDoughnutChart(analyticsCategoryChartEl, expenses, {
+    large: true,
+    centerMode: "categories",
+    emptyMessage: "Add expenses to see your category doughnut chart."
+  });
+  renderMonthlyBarChart(
+    analyticsMonthlyChartEl,
+    getMonthlyComparisonSeries(anchorMonth, 6),
+    anchorMonth
+  );
+
+  // Render Monthly Spending Statistics table
+  if (analyticsMonthlyTbody) {
+    analyticsMonthlyTbody.textContent = "";
+
+    if (activeMonths.length === 0) {
+      const emptyRow = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 5;
+      td.className = "recent-meta";
+      td.textContent = "No monthly spending statistics available yet.";
+      emptyRow.appendChild(td);
+      analyticsMonthlyTbody.appendChild(emptyRow);
+      return;
+    }
+
+    activeMonths.forEach((monthKey) => {
+      const list = monthBuckets[monthKey];
+      const sum = calculateTotalSpending(list);
+      const avg = sum / list.length;
+      const monthBreakdown = calculateCategoryBreakdown(list);
+      const topCat = monthBreakdown[0] ? monthBreakdown[0].category : "—";
+
+      const tr = document.createElement("tr");
+
+      const monthTd = document.createElement("td");
+      monthTd.className = "cell-title";
+      monthTd.textContent = formatMonthLabel(monthKey);
+
+      const countTd = document.createElement("td");
+      countTd.className = "text-right tabular-nums";
+      countTd.textContent = String(list.length);
+
+      const totalTd = document.createElement("td");
+      totalTd.className = "text-right tabular-nums cell-amount";
+      totalTd.textContent = formatCurrency(sum);
+
+      const avgTd = document.createElement("td");
+      avgTd.className = "text-right tabular-nums";
+      avgTd.textContent = formatCurrency(avg);
+
+      const topTd = document.createElement("td");
+      topTd.textContent = topCat;
+
+      tr.appendChild(monthTd);
+      tr.appendChild(countTd);
+      tr.appendChild(totalTd);
+      tr.appendChild(avgTd);
+      tr.appendChild(topTd);
+      analyticsMonthlyTbody.appendChild(tr);
+    });
+  }
+}
+
 /**
  * Refreshes UI views after state changes.
  */
 function refreshUI() {
   populateMonthFilter();
   renderTransactionsTable();
+  renderDashboard();
+  renderAnalytics();
 }
 
 // ==========================================================================
@@ -781,8 +1308,18 @@ function handleExpenseFormSubmit(event) {
 
 function initApp() {
   renderCurrentDate();
+  if (dashboardMonthInput && !dashboardMonthInput.value) {
+    dashboardMonthInput.value = getCurrentMonthKey();
+  }
   loadFromStorage();
   refreshUI();
+
+  if (dashboardMonthInput) {
+    dashboardMonthInput.addEventListener("change", () => {
+      renderDashboard();
+      renderAnalytics();
+    });
+  }
 
   // Global click delegation for navigation, modals, and transaction row actions
   document.addEventListener("click", (event) => {
