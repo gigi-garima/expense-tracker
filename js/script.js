@@ -167,6 +167,22 @@ const analyticsCategoryChartEl = document.getElementById("analytics-category-cha
 const analyticsMonthlyChartEl = document.getElementById("analytics-monthly-chart");
 const analyticsMonthlyTbody = document.getElementById("analytics-monthly-tbody");
 
+// Budget section elements
+const budgetForm = document.getElementById("budget-form");
+const budgetMonthInput = document.getElementById("budget-month-input");
+const monthlyBudgetInput = document.getElementById("monthly-budget-input");
+const budgetFormError = document.getElementById("budget-form-error");
+const budgetSummarySubtitleEl = document.getElementById("budget-summary-subtitle");
+const budgetSummaryTargetEl = document.getElementById("budget-summary-target");
+const budgetSummarySpentEl = document.getElementById("budget-summary-spent");
+const budgetSummaryRemainingEl = document.getElementById("budget-summary-remaining");
+const budgetSummaryUtilizationEl = document.getElementById("budget-summary-utilization");
+const budgetProgressSummaryEl = document.getElementById("budget-progress-summary");
+const budgetProgressPercentEl = document.getElementById("budget-progress-percent");
+const budgetProgressTrackEl = document.getElementById("budget-progress-track");
+const budgetProgressFillEl = document.getElementById("budget-progress-fill");
+const budgetAlertAreaEl = document.getElementById("budget-alert-area");
+
 // ==========================================================================
 // Utility & Formatting Helpers
 // ==========================================================================
@@ -1275,6 +1291,151 @@ function renderAnalytics() {
   }
 }
 
+// ==========================================================================
+// Monthly Budget Management (Priority 2)
+// ==========================================================================
+
+function getSelectedBudgetMonth() {
+  if (budgetMonthInput && /^\d{4}-\d{2}$/.test(budgetMonthInput.value)) {
+    return budgetMonthInput.value;
+  }
+  return getCurrentMonthKey();
+}
+
+/**
+ * Syncs the budget input field with the saved budget for the chosen month.
+ */
+function syncBudgetInputForMonth(monthKey) {
+  if (!monthlyBudgetInput) return;
+  const saved = budgets[monthKey];
+  monthlyBudgetInput.value = saved ? String(saved) : "";
+}
+
+/**
+ * Renders the Budget summary, utilization bar, and 80% / 100% threshold alerts.
+ */
+function renderBudgetSection() {
+  const monthKey = getSelectedBudgetMonth();
+  const monthLabel = formatMonthLabel(monthKey);
+  const targetBudget = budgets[monthKey] || 0;
+  const hasBudget = targetBudget > 0;
+  const spent = calculateTotalSpending(getExpensesForMonth(monthKey));
+  const remaining = hasBudget ? targetBudget - spent : 0;
+  const usagePercent = hasBudget ? (spent / targetBudget) * 100 : 0;
+
+  if (budgetSummarySubtitleEl) {
+    budgetSummarySubtitleEl.textContent = `Allocation vs. spending for ${monthLabel}`;
+  }
+  if (budgetSummaryTargetEl) {
+    budgetSummaryTargetEl.textContent = formatCurrency(targetBudget);
+  }
+  if (budgetSummarySpentEl) {
+    budgetSummarySpentEl.textContent = formatCurrency(spent);
+  }
+  if (budgetSummaryRemainingEl) {
+    budgetSummaryRemainingEl.textContent = hasBudget ? formatCurrency(remaining) : "$0.00";
+    budgetSummaryRemainingEl.classList.toggle("text-emerald", hasBudget && remaining >= 0);
+    budgetSummaryRemainingEl.classList.toggle("text-rose", hasBudget && remaining < 0);
+  }
+  if (budgetSummaryUtilizationEl) {
+    budgetSummaryUtilizationEl.textContent = hasBudget ? `${usagePercent.toFixed(1)}%` : "0%";
+  }
+
+  if (budgetProgressSummaryEl && budgetProgressPercentEl && budgetProgressFillEl && budgetProgressTrackEl) {
+    const clampedWidth = Math.min(100, Math.max(0, usagePercent));
+    budgetProgressFillEl.style.width = `${clampedWidth.toFixed(1)}%`;
+    budgetProgressFillEl.classList.toggle("is-warning", hasBudget && usagePercent >= 80 && usagePercent < 100);
+    budgetProgressFillEl.classList.toggle("is-exceeded", hasBudget && usagePercent >= 100);
+    budgetProgressTrackEl.setAttribute("aria-valuenow", String(Math.round(clampedWidth)));
+
+    budgetProgressSummaryEl.textContent = hasBudget
+      ? `${formatCurrency(spent)} / ${formatCurrency(targetBudget)}`
+      : `${formatCurrency(spent)} spent (no budget set)`;
+    budgetProgressPercentEl.textContent = hasBudget ? `${usagePercent.toFixed(1)}%` : "0%";
+  }
+
+  if (budgetAlertAreaEl) {
+    budgetAlertAreaEl.textContent = "";
+    const alertBox = document.createElement("div");
+
+    if (!hasBudget) {
+      alertBox.className = "alert-box";
+      alertBox.textContent = `No budget set for ${monthLabel}. Enter an amount above and click Save Monthly Budget to track spending limits.`;
+    } else if (usagePercent >= 100) {
+      alertBox.className = "alert-box alert-danger";
+      const overage = spent - targetBudget;
+      const suffix = overage > 0 ? ` Exceeded by ${formatCurrency(overage)}.` : " You have reached 100% of your budget.";
+      alertBox.textContent = `Budget Exceeded (${usagePercent.toFixed(1)}%): ${formatCurrency(spent)} spent of ${formatCurrency(targetBudget)} in ${monthLabel}.${suffix}`;
+    } else if (usagePercent >= 80) {
+      alertBox.className = "alert-box alert-warning";
+      alertBox.textContent = `80% Budget Warning (${usagePercent.toFixed(1)}%): You have used ${usagePercent.toFixed(1)}% of your ${monthLabel} budget (${formatCurrency(remaining)} remaining).`;
+    } else {
+      alertBox.className = "alert-box alert-healthy";
+      alertBox.textContent = `Healthy Budget (${usagePercent.toFixed(1)}%): Spending is within your ${monthLabel} budget with ${formatCurrency(remaining)} remaining.`;
+    }
+
+    budgetAlertAreaEl.appendChild(alertBox);
+  }
+}
+
+/**
+ * Validates and saves a monthly budget for the selected month.
+ */
+function handleBudgetFormSubmit(event) {
+  event.preventDefault();
+  if (budgetFormError) {
+    budgetFormError.hidden = true;
+    budgetFormError.textContent = "";
+  }
+  if (monthlyBudgetInput) monthlyBudgetInput.classList.remove("is-invalid");
+
+  const monthKey = getSelectedBudgetMonth();
+  const amountNum = Number(monthlyBudgetInput ? monthlyBudgetInput.value : "");
+
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) {
+    if (budgetFormError) {
+      budgetFormError.textContent = "Please choose a valid month.";
+      budgetFormError.hidden = false;
+    }
+    return;
+  }
+
+  if (!Number.isFinite(amountNum) || amountNum <= 0) {
+    if (budgetFormError) {
+      budgetFormError.textContent = "Please enter a valid monthly budget greater than 0.";
+      budgetFormError.hidden = false;
+    }
+    if (monthlyBudgetInput) {
+      monthlyBudgetInput.classList.add("is-invalid");
+      monthlyBudgetInput.focus();
+    }
+    return;
+  }
+
+  const roundedBudget = Math.round(amountNum * 100) / 100;
+  budgets[monthKey] = roundedBudget;
+  saveBudgets();
+
+  // Keep Dashboard month aligned with the edited budget month so figures match immediately
+  if (dashboardMonthInput) {
+    dashboardMonthInput.value = monthKey;
+  }
+
+  refreshUI();
+
+  const spent = calculateTotalSpending(getExpensesForMonth(monthKey));
+  const usagePercent = (spent / roundedBudget) * 100;
+  const label = formatMonthLabel(monthKey);
+
+  if (usagePercent >= 100) {
+    showNotification(`Saved ${label} budget (${formatCurrency(roundedBudget)}). Alert: budget already exceeded (${usagePercent.toFixed(1)}%).`, "warning");
+  } else if (usagePercent >= 80) {
+    showNotification(`Saved ${label} budget (${formatCurrency(roundedBudget)}). Heads up: ${usagePercent.toFixed(1)}% already used.`, "warning");
+  } else {
+    showNotification(`Saved ${label} monthly budget: ${formatCurrency(roundedBudget)}.`, "success");
+  }
+}
+
 /**
  * Refreshes UI views after state changes.
  */
@@ -1283,6 +1444,7 @@ function refreshUI() {
   renderTransactionsTable();
   renderDashboard();
   renderAnalytics();
+  renderBudgetSection();
 }
 
 // ==========================================================================
@@ -1325,17 +1487,44 @@ function handleExpenseFormSubmit(event) {
 
 function initApp() {
   renderCurrentDate();
+  const currentMonth = getCurrentMonthKey();
   if (dashboardMonthInput && !dashboardMonthInput.value) {
-    dashboardMonthInput.value = getCurrentMonthKey();
+    dashboardMonthInput.value = currentMonth;
+  }
+  if (budgetMonthInput && !budgetMonthInput.value) {
+    budgetMonthInput.value = currentMonth;
   }
   loadFromStorage();
+  syncBudgetInputForMonth(getSelectedBudgetMonth());
   refreshUI();
 
   if (dashboardMonthInput) {
     dashboardMonthInput.addEventListener("change", () => {
+      if (budgetMonthInput && dashboardMonthInput.value) {
+        budgetMonthInput.value = dashboardMonthInput.value;
+        syncBudgetInputForMonth(budgetMonthInput.value);
+      }
       renderDashboard();
       renderAnalytics();
+      renderBudgetSection();
     });
+  }
+
+  if (budgetMonthInput) {
+    budgetMonthInput.addEventListener("change", () => {
+      const chosenMonth = getSelectedBudgetMonth();
+      if (dashboardMonthInput) {
+        dashboardMonthInput.value = chosenMonth;
+      }
+      syncBudgetInputForMonth(chosenMonth);
+      renderDashboard();
+      renderAnalytics();
+      renderBudgetSection();
+    });
+  }
+
+  if (budgetForm) {
+    budgetForm.addEventListener("submit", handleBudgetFormSubmit);
   }
 
   // Global click delegation for navigation, modals, and transaction row actions
