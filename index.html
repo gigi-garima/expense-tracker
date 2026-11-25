@@ -96,8 +96,8 @@
         <div class="sidebar-status-card">
           <span class="status-dot" aria-hidden="true"></span>
           <div>
-            <p class="status-title">UI Foundation</p>
-            <p class="status-meta">Phase 1 • Placeholder Preview</p>
+            <p class="status-title">SpendWise</p>
+            <p class="status-meta">Browser Local Storage</p>
           </div>
         </div>
       </div>
@@ -128,6 +128,13 @@
         </div>
 
         <div class="header-right">
+          <button type="button" id="quick-add-expense-btn" class="btn btn-primary btn-sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Expense</span>
+          </button>
           <div class="date-pill" aria-label="Current date">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -141,13 +148,11 @@
       </header>
 
       <!-- Notification Area -->
-      <div id="notification-area" class="notification-area" role="status" aria-live="polite">
+      <div id="notification-area" class="notification-area" role="status" aria-live="polite" hidden>
         <div class="notification-banner is-info" id="notification-banner">
           <div class="notification-content">
-            <span class="notification-badge">Phase 1 UI</span>
-            <p id="notification-message">
-              Showing placeholder sample data for the frontend layout. Expense CRUD and calculations will be added in upcoming phases.
-            </p>
+            <span class="notification-badge" id="notification-badge">Info</span>
+            <p id="notification-message"></p>
           </div>
           <button type="button" id="notification-close-btn" class="icon-btn notification-close-btn" aria-label="Dismiss notification">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -161,6 +166,13 @@
       <main id="main-content" class="main-content">
         <!-- ==================== 1. DASHBOARD SECTION ==================== -->
         <section id="section-dashboard" class="content-section is-active" aria-labelledby="page-title">
+          <div class="section-controls-bar">
+            <div class="month-picker-group">
+              <label for="dashboard-month-input" class="form-label">Viewing Month</label>
+              <input type="month" id="dashboard-month-input" class="form-control form-control-compact" />
+            </div>
+          </div>
+
           <!-- KPI Summary Cards -->
           <div class="kpi-grid">
             <article class="card kpi-card">
@@ -173,8 +185,8 @@
                   </svg>
                 </span>
               </div>
-              <p class="kpi-value tabular-nums">$1,420.50</p>
-              <p class="kpi-meta"><span class="sample-pill">Sample Data</span> Current month total</p>
+              <p class="kpi-value tabular-nums" id="dash-total-spent">$0.00</p>
+              <p class="kpi-meta" id="dash-total-meta">Selected month total</p>
             </article>
 
             <article class="card kpi-card">
@@ -182,12 +194,13 @@
                 <span class="kpi-label">Monthly Budget</span>
                 <span class="kpi-icon kpi-icon-indigo" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path>
+                    <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path>
                   </svg>
                 </span>
               </div>
-              <p class="kpi-value tabular-nums">$2,500.00</p>
-              <p class="kpi-meta"><span class="sample-pill">Sample Data</span> Monthly limit</p>
+              <p class="kpi-value tabular-nums" id="dash-monthly-budget">$0.00</p>
+              <p class="kpi-meta" id="dash-budget-meta">No budget set</p>
             </article>
 
             <article class="card kpi-card">
@@ -200,8 +213,8 @@
                   </svg>
                 </span>
               </div>
-              <p class="kpi-value tabular-nums">$1,079.50</p>
-              <p class="kpi-meta"><span class="sample-pill">Sample Data</span> 43.2% remaining</p>
+              <p class="kpi-value tabular-nums" id="dash-remaining-balance">$0.00</p>
+              <p class="kpi-meta" id="dash-remaining-meta">Set a budget to track</p>
             </article>
 
             <article class="card kpi-card">
@@ -216,8 +229,8 @@
                   </svg>
                 </span>
               </div>
-              <p class="kpi-value tabular-nums">18</p>
-              <p class="kpi-meta"><span class="sample-pill">Sample Data</span> Entries this month</p>
+              <p class="kpi-value tabular-nums" id="dash-tx-count">0</p>
+              <p class="kpi-meta" id="dash-tx-meta">Expenses in month</p>
             </article>
           </div>
 
@@ -228,14 +241,14 @@
                 <h2 class="card-title">Monthly Budget Progress</h2>
                 <p class="card-subtitle">Tracks spending against your monthly limit with 80% and 100% alert thresholds</p>
               </div>
-              <span class="sample-pill">Sample Data</span>
+              <button type="button" class="btn btn-secondary btn-sm" data-nav-target="budget">Manage Budget</button>
             </div>
             <div class="progress-stats-row">
-              <span class="tabular-nums"><strong>$1,420.50</strong> spent of <strong>$2,500.00</strong></span>
-              <span class="progress-percent tabular-nums">56.8% used</span>
+              <span class="tabular-nums" id="dash-progress-summary"><strong>$0.00</strong> spent (no monthly budget set)</span>
+              <span class="progress-percent tabular-nums" id="dash-progress-percent">0%</span>
             </div>
-            <div class="progress-track" role="progressbar" aria-label="Monthly budget used" aria-valuenow="57" aria-valuemin="0" aria-valuemax="100">
-              <div class="progress-fill" style="width: 56.8%;"></div>
+            <div class="progress-track" role="progressbar" id="dash-progress-track" aria-label="Monthly budget used" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-fill" id="dash-progress-fill" style="width: 0%;"></div>
               <span class="progress-marker" style="left: 80%;" title="80% Warning Threshold"></span>
             </div>
             <div class="progress-scale">
@@ -243,6 +256,7 @@
               <span>Warning: 80%</span>
               <span>Limit: 100%</span>
             </div>
+            <div id="dash-budget-alert" class="alert-box" hidden></div>
           </article>
 
           <!-- Charts Row -->
@@ -252,45 +266,10 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Spending by Category</h2>
-                  <p class="card-subtitle">Distribution across expense categories</p>
+                  <p class="card-subtitle" id="dash-category-subtitle">Distribution for selected month</p>
                 </div>
-                <span class="sample-pill">Sample Preview</span>
               </div>
-              <div class="doughnut-layout">
-                <div class="doughnut-ring" role="img" aria-label="Sample category spending doughnut chart">
-                  <div class="doughnut-hole">
-                    <span class="doughnut-total tabular-nums">$1,420</span>
-                    <span class="doughnut-caption">Sample</span>
-                  </div>
-                </div>
-                <ul class="chart-legend">
-                  <li>
-                    <span class="legend-dot dot-purple"></span>
-                    <span class="legend-name">Food &amp; Dining</span>
-                    <span class="legend-val tabular-nums">$480 (34%)</span>
-                  </li>
-                  <li>
-                    <span class="legend-dot dot-indigo"></span>
-                    <span class="legend-name">Housing &amp; Bills</span>
-                    <span class="legend-val tabular-nums">$425 (30%)</span>
-                  </li>
-                  <li>
-                    <span class="legend-dot dot-teal"></span>
-                    <span class="legend-name">Transport</span>
-                    <span class="legend-val tabular-nums">$225 (16%)</span>
-                  </li>
-                  <li>
-                    <span class="legend-dot dot-amber"></span>
-                    <span class="legend-name">Shopping</span>
-                    <span class="legend-val tabular-nums">$170 (12%)</span>
-                  </li>
-                  <li>
-                    <span class="legend-dot dot-rose"></span>
-                    <span class="legend-name">Entertainment</span>
-                    <span class="legend-val tabular-nums">$120 (8%)</span>
-                  </li>
-                </ul>
-              </div>
+              <div id="dash-category-chart" class="doughnut-layout"></div>
             </article>
 
             <!-- Monthly Spending Chart -->
@@ -298,42 +277,10 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Monthly Spending</h2>
-                  <p class="card-subtitle">6-month spending comparison</p>
-                </div>
-                <span class="sample-pill">Sample Preview</span>
-              </div>
-              <div class="bar-chart-placeholder" role="img" aria-label="Sample monthly spending bar chart from June to November">
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.1k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 55%;"></div></div>
-                  <span class="bar-label">Jun</span>
-                </div>
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.6k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 78%;"></div></div>
-                  <span class="bar-label">Jul</span>
-                </div>
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.3k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 62%;"></div></div>
-                  <span class="bar-label">Aug</span>
-                </div>
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.9k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 92%;"></div></div>
-                  <span class="bar-label">Sep</span>
-                </div>
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.5k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 72%;"></div></div>
-                  <span class="bar-label">Oct</span>
-                </div>
-                <div class="bar-column is-current">
-                  <span class="bar-value tabular-nums">$1.4k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 68%;"></div></div>
-                  <span class="bar-label">Nov</span>
+                  <p class="card-subtitle">Last 6 months comparison</p>
                 </div>
               </div>
+              <div id="dash-monthly-chart" class="bar-chart-container"></div>
             </article>
           </div>
 
@@ -342,55 +289,13 @@
             <div class="card-header">
               <div>
                 <h2 class="card-title">Recent Transactions</h2>
-                <p class="card-subtitle">Latest recorded expenses (placeholder sample entries)</p>
+                <p class="card-subtitle">Latest 5 recorded expenses</p>
               </div>
               <div class="card-actions">
-                <span class="sample-pill">Sample Data</span>
                 <button type="button" class="btn btn-secondary btn-sm" data-nav-target="transactions">View All</button>
               </div>
             </div>
-            <ul class="recent-list">
-              <li class="recent-item">
-                <div class="recent-left">
-                  <span class="category-badge cat-food" aria-hidden="true">F</span>
-                  <div>
-                    <p class="recent-title">Campus Cafe &amp; Groceries</p>
-                    <p class="recent-meta">Food &amp; Dining • Nov 24, 2026 • UPI</p>
-                  </div>
-                </div>
-                <span class="recent-amount tabular-nums">-$28.50</span>
-              </li>
-              <li class="recent-item">
-                <div class="recent-left">
-                  <span class="category-badge cat-transport" aria-hidden="true">T</span>
-                  <div>
-                    <p class="recent-title">Metro Transit Pass</p>
-                    <p class="recent-meta">Transport • Nov 22, 2026 • Debit Card</p>
-                  </div>
-                </div>
-                <span class="recent-amount tabular-nums">-$45.00</span>
-              </li>
-              <li class="recent-item">
-                <div class="recent-left">
-                  <span class="category-badge cat-bills" aria-hidden="true">B</span>
-                  <div>
-                    <p class="recent-title">Monthly Internet Bill</p>
-                    <p class="recent-meta">Housing &amp; Bills • Nov 19, 2026 • Bank Transfer</p>
-                  </div>
-                </div>
-                <span class="recent-amount tabular-nums">-$60.00</span>
-              </li>
-              <li class="recent-item">
-                <div class="recent-left">
-                  <span class="category-badge cat-entertainment" aria-hidden="true">E</span>
-                  <div>
-                    <p class="recent-title">Bookstore &amp; Study Supplies</p>
-                    <p class="recent-meta">Shopping • Nov 16, 2026 • Cash</p>
-                  </div>
-                </div>
-                <span class="recent-amount tabular-nums">-$36.00</span>
-              </li>
-            </ul>
+            <ul id="recent-transactions-list" class="recent-list"></ul>
           </article>
         </section>
 
@@ -405,58 +310,41 @@
                     type="search"
                     id="search-transactions"
                     class="form-control"
-                    placeholder="Search expenses (Phase 2)..."
-                    data-placeholder-control="Search & filtering will be enabled in Phase 2."
+                    placeholder="Search by title..."
                   />
                 </div>
                 <div class="input-group">
                   <label for="filter-category" class="sr-only">Filter by category</label>
-                  <select
-                    id="filter-category"
-                    class="form-control"
-                    data-placeholder-control="Category filtering will be enabled in Phase 2."
-                  >
+                  <select id="filter-category" class="form-control">
                     <option value="">All Categories</option>
-                    <option value="food">Food &amp; Dining</option>
-                    <option value="bills">Housing &amp; Bills</option>
-                    <option value="transport">Transport</option>
-                    <option value="shopping">Shopping</option>
-                    <option value="entertainment">Entertainment</option>
+                    <option value="Food & Dining">Food &amp; Dining</option>
+                    <option value="Housing & Bills">Housing &amp; Bills</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Education">Education</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div class="input-group">
                   <label for="filter-month" class="sr-only">Filter by month</label>
-                  <select
-                    id="filter-month"
-                    class="form-control"
-                    data-placeholder-control="Month filtering will be enabled in Phase 2."
-                  >
+                  <select id="filter-month" class="form-control">
                     <option value="">All Months</option>
-                    <option value="2026-11">November 2026</option>
-                    <option value="2026-10">October 2026</option>
                   </select>
                 </div>
                 <div class="input-group">
                   <label for="sort-transactions" class="sr-only">Sort transactions</label>
-                  <select
-                    id="sort-transactions"
-                    class="form-control"
-                    data-placeholder-control="Sorting by date and amount will be enabled in Phase 2."
-                  >
-                    <option value="date-desc">Sort: Newest Date</option>
-                    <option value="date-asc">Sort: Oldest Date</option>
+                  <select id="sort-transactions" class="form-control">
+                    <option value="date-desc">Sort: Newest First</option>
+                    <option value="date-asc">Sort: Oldest First</option>
                     <option value="amount-desc">Sort: Highest Amount</option>
                     <option value="amount-asc">Sort: Lowest Amount</option>
                   </select>
                 </div>
               </div>
 
-              <button
-                type="button"
-                id="add-expense-btn"
-                class="btn btn-primary"
-                data-placeholder-action="Add Expense form and CRUD logic will be implemented in Phase 2."
-              >
+              <button type="button" id="add-expense-btn" class="btn btn-primary">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -466,11 +354,11 @@
             </div>
 
             <div class="table-meta-bar">
-              <span class="sample-pill">Sample Data</span>
-              <span class="table-count">Showing 5 sample transactions</span>
+              <span class="table-count" id="transactions-count-text">0 transactions</span>
+              <span class="table-filtered-total tabular-nums" id="transactions-filtered-total">Total: $0.00</span>
             </div>
 
-            <div class="table-responsive">
+            <div id="transactions-table-wrapper" class="table-responsive">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -482,74 +370,18 @@
                     <th scope="col" class="text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr>
-                    <td class="cell-title">Campus Cafe &amp; Groceries</td>
-                    <td><span class="tag tag-food">Food &amp; Dining</span></td>
-                    <td class="tabular-nums">2026-11-24</td>
-                    <td>UPI</td>
-                    <td class="text-right tabular-nums cell-amount">$28.50</td>
-                    <td class="text-right">
-                      <div class="row-actions">
-                        <button type="button" class="btn-action" aria-label="Edit Campus Cafe &amp; Groceries" data-placeholder-action="Edit expense functionality will be implemented in Phase 2.">Edit</button>
-                        <button type="button" class="btn-action btn-action-danger" aria-label="Delete Campus Cafe &amp; Groceries" data-placeholder-action="Delete expense functionality will be implemented in Phase 2.">Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="cell-title">Metro Transit Pass</td>
-                    <td><span class="tag tag-transport">Transport</span></td>
-                    <td class="tabular-nums">2026-11-22</td>
-                    <td>Debit Card</td>
-                    <td class="text-right tabular-nums cell-amount">$45.00</td>
-                    <td class="text-right">
-                      <div class="row-actions">
-                        <button type="button" class="btn-action" aria-label="Edit Metro Transit Pass" data-placeholder-action="Edit expense functionality will be implemented in Phase 2.">Edit</button>
-                        <button type="button" class="btn-action btn-action-danger" aria-label="Delete Metro Transit Pass" data-placeholder-action="Delete expense functionality will be implemented in Phase 2.">Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="cell-title">Monthly Internet Bill</td>
-                    <td><span class="tag tag-bills">Housing &amp; Bills</span></td>
-                    <td class="tabular-nums">2026-11-19</td>
-                    <td>Bank Transfer</td>
-                    <td class="text-right tabular-nums cell-amount">$60.00</td>
-                    <td class="text-right">
-                      <div class="row-actions">
-                        <button type="button" class="btn-action" aria-label="Edit Monthly Internet Bill" data-placeholder-action="Edit expense functionality will be implemented in Phase 2.">Edit</button>
-                        <button type="button" class="btn-action btn-action-danger" aria-label="Delete Monthly Internet Bill" data-placeholder-action="Delete expense functionality will be implemented in Phase 2.">Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="cell-title">Bookstore &amp; Study Supplies</td>
-                    <td><span class="tag tag-shopping">Shopping</span></td>
-                    <td class="tabular-nums">2026-11-16</td>
-                    <td>Cash</td>
-                    <td class="text-right tabular-nums cell-amount">$36.00</td>
-                    <td class="text-right">
-                      <div class="row-actions">
-                        <button type="button" class="btn-action" aria-label="Edit Bookstore &amp; Study Supplies" data-placeholder-action="Edit expense functionality will be implemented in Phase 2.">Edit</button>
-                        <button type="button" class="btn-action btn-action-danger" aria-label="Delete Bookstore &amp; Study Supplies" data-placeholder-action="Delete expense functionality will be implemented in Phase 2.">Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="cell-title">Weekend Movie Tickets</td>
-                    <td><span class="tag tag-entertainment">Entertainment</span></td>
-                    <td class="tabular-nums">2026-11-14</td>
-                    <td>Credit Card</td>
-                    <td class="text-right tabular-nums cell-amount">$24.00</td>
-                    <td class="text-right">
-                      <div class="row-actions">
-                        <button type="button" class="btn-action" aria-label="Edit Weekend Movie Tickets" data-placeholder-action="Edit expense functionality will be implemented in Phase 2.">Edit</button>
-                        <button type="button" class="btn-action btn-action-danger" aria-label="Delete Weekend Movie Tickets" data-placeholder-action="Delete expense functionality will be implemented in Phase 2.">Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
+                <tbody id="transactions-tbody"></tbody>
               </table>
+            </div>
+
+            <!-- Empty State when no transactions match or exist -->
+            <div id="transactions-empty-state" class="empty-state" hidden>
+              <p class="empty-title" id="empty-state-title">No expenses recorded yet</p>
+              <p class="empty-desc" id="empty-state-desc">Add your first expense or load sample data to explore SpendWise.</p>
+              <div class="button-group">
+                <button type="button" class="btn btn-primary btn-sm" id="empty-add-expense-btn">Add Expense</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="empty-load-sample-btn">Load Sample Data</button>
+              </div>
             </div>
           </article>
         </section>
@@ -559,24 +391,24 @@
           <!-- Spending Statistics -->
           <div class="kpi-grid">
             <article class="card kpi-card">
-              <span class="kpi-label">Average Daily Spend</span>
-              <p class="kpi-value tabular-nums">$47.35</p>
-              <p class="kpi-meta"><span class="sample-pill">Sample Data</span> Over 30 days</p>
+              <span class="kpi-label">Total All-Time Spend</span>
+              <p class="kpi-value tabular-nums" id="stat-total-spend">$0.00</p>
+              <p class="kpi-meta" id="stat-total-meta">Across all months</p>
             </article>
             <article class="card kpi-card">
-              <span class="kpi-label">Top Category</span>
-              <p class="kpi-value">Food &amp; Dining</p>
-              <p class="kpi-meta"><span class="sample-pill">Sample Data</span> 34% of spending</p>
+              <span class="kpi-label">Highest Category</span>
+              <p class="kpi-value" id="stat-top-category">—</p>
+              <p class="kpi-meta" id="stat-top-category-meta">No expenses yet</p>
             </article>
             <article class="card kpi-card">
-              <span class="kpi-label">Largest Expense</span>
-              <p class="kpi-value tabular-nums">$425.00</p>
-              <p class="kpi-meta"><span class="sample-pill">Sample Data</span> Housing &amp; Bills</p>
+              <span class="kpi-label">Average Transaction</span>
+              <p class="kpi-value tabular-nums" id="stat-avg-transaction">$0.00</p>
+              <p class="kpi-meta" id="stat-avg-meta">Per expense entry</p>
             </article>
             <article class="card kpi-card">
-              <span class="kpi-label">Monthly Average</span>
-              <p class="kpi-value tabular-nums">$1,466.00</p>
-              <p class="kpi-meta"><span class="sample-pill">Sample Data</span> Last 6 months</p>
+              <span class="kpi-label">Total Transactions</span>
+              <p class="kpi-value tabular-nums" id="stat-tx-count">0</p>
+              <p class="kpi-meta" id="stat-monthly-avg-meta">Monthly avg: $0.00</p>
             </article>
           </div>
 
@@ -586,45 +418,10 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Category Breakdown (Doughnut)</h2>
-                  <p class="card-subtitle">Share of total spending per category</p>
+                  <p class="card-subtitle">Share of total spending across all expenses</p>
                 </div>
-                <span class="sample-pill">Sample Preview</span>
               </div>
-              <div class="doughnut-layout">
-                <div class="doughnut-ring doughnut-ring-lg" role="img" aria-label="Sample analytics category doughnut chart">
-                  <div class="doughnut-hole">
-                    <span class="doughnut-total tabular-nums">5</span>
-                    <span class="doughnut-caption">Categories</span>
-                  </div>
-                </div>
-                <ul class="chart-legend">
-                  <li>
-                    <span class="legend-dot dot-purple"></span>
-                    <span class="legend-name">Food &amp; Dining</span>
-                    <span class="legend-val tabular-nums">$480.00</span>
-                  </li>
-                  <li>
-                    <span class="legend-dot dot-indigo"></span>
-                    <span class="legend-name">Housing &amp; Bills</span>
-                    <span class="legend-val tabular-nums">$425.00</span>
-                  </li>
-                  <li>
-                    <span class="legend-dot dot-teal"></span>
-                    <span class="legend-name">Transport</span>
-                    <span class="legend-val tabular-nums">$225.00</span>
-                  </li>
-                  <li>
-                    <span class="legend-dot dot-amber"></span>
-                    <span class="legend-name">Shopping</span>
-                    <span class="legend-val tabular-nums">$170.50</span>
-                  </li>
-                  <li>
-                    <span class="legend-dot dot-rose"></span>
-                    <span class="legend-name">Entertainment</span>
-                    <span class="legend-val tabular-nums">$120.00</span>
-                  </li>
-                </ul>
-              </div>
+              <div id="analytics-category-chart" class="doughnut-layout"></div>
             </article>
 
             <!-- Monthly Spending Comparison -->
@@ -632,44 +429,36 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Monthly Spending Comparison</h2>
-                  <p class="card-subtitle">Month-over-month expense comparison</p>
-                </div>
-                <span class="sample-pill">Sample Preview</span>
-              </div>
-              <div class="bar-chart-placeholder" role="img" aria-label="Sample 6-month spending comparison chart">
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.1k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 55%;"></div></div>
-                  <span class="bar-label">Jun</span>
-                </div>
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.6k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 78%;"></div></div>
-                  <span class="bar-label">Jul</span>
-                </div>
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.3k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 62%;"></div></div>
-                  <span class="bar-label">Aug</span>
-                </div>
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.9k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 92%;"></div></div>
-                  <span class="bar-label">Sep</span>
-                </div>
-                <div class="bar-column">
-                  <span class="bar-value tabular-nums">$1.5k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 72%;"></div></div>
-                  <span class="bar-label">Oct</span>
-                </div>
-                <div class="bar-column is-current">
-                  <span class="bar-value tabular-nums">$1.4k</span>
-                  <div class="bar-track"><div class="bar-fill" style="height: 68%;"></div></div>
-                  <span class="bar-label">Nov</span>
+                  <p class="card-subtitle">Month-over-month spending comparison</p>
                 </div>
               </div>
+              <div id="analytics-monthly-chart" class="bar-chart-container"></div>
             </article>
           </div>
+
+          <!-- Monthly Spending Breakdown Table -->
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Monthly Spending Statistics</h2>
+                <p class="card-subtitle">Calculated summary per month from your shared expense records</p>
+              </div>
+            </div>
+            <div id="analytics-monthly-summary" class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Month</th>
+                    <th scope="col" class="text-right">Transactions</th>
+                    <th scope="col" class="text-right">Total Spent</th>
+                    <th scope="col" class="text-right">Average Expense</th>
+                    <th scope="col">Top Category</th>
+                  </tr>
+                </thead>
+                <tbody id="analytics-monthly-tbody"></tbody>
+              </table>
+            </div>
+          </article>
         </section>
 
         <!-- ==================== 4. BUDGET SECTION ==================== -->
@@ -680,24 +469,29 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Monthly Budget Target</h2>
-                  <p class="card-subtitle">Set your monthly spending ceiling</p>
+                  <p class="card-subtitle">Set or edit the spending ceiling for any month</p>
                 </div>
               </div>
               <form id="budget-form" class="stacked-form" novalidate>
+                <div class="form-field">
+                  <label for="budget-month-input" class="form-label">Target Month</label>
+                  <input type="month" id="budget-month-input" class="form-control" required />
+                </div>
                 <div class="form-field">
                   <label for="monthly-budget-input" class="form-label">Monthly Budget Amount ($)</label>
                   <input
                     type="number"
                     id="monthly-budget-input"
                     class="form-control"
-                    min="1"
+                    min="0.01"
                     step="0.01"
-                    value="2500.00"
                     placeholder="e.g. 2500.00"
+                    required
                   />
-                  <p class="form-help">Placeholder value shown. Saving budgets to localStorage will be added in a later phase.</p>
+                  <p class="form-help">Each month retains its own saved budget in localStorage.</p>
                 </div>
-                <button type="submit" class="btn btn-primary">Save Monthly Budget</button>
+                <p id="budget-form-error" class="form-error" role="alert" hidden></p>
+                <button type="submit" class="btn btn-primary" id="save-budget-btn">Save Monthly Budget</button>
               </form>
             </article>
 
@@ -706,26 +500,25 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Budget Summary</h2>
-                  <p class="card-subtitle">Current month allocation vs. spending</p>
+                  <p class="card-subtitle" id="budget-summary-subtitle">Allocation vs. spending for selected month</p>
                 </div>
-                <span class="sample-pill">Sample Data</span>
               </div>
               <dl class="summary-list">
                 <div class="summary-row">
                   <dt>Target Budget</dt>
-                  <dd class="tabular-nums">$2,500.00</dd>
+                  <dd class="tabular-nums" id="budget-summary-target">$0.00</dd>
                 </div>
                 <div class="summary-row">
                   <dt>Total Spent</dt>
-                  <dd class="tabular-nums">$1,420.50</dd>
+                  <dd class="tabular-nums" id="budget-summary-spent">$0.00</dd>
                 </div>
                 <div class="summary-row">
                   <dt>Remaining Balance</dt>
-                  <dd class="tabular-nums text-emerald">$1,079.50</dd>
+                  <dd class="tabular-nums" id="budget-summary-remaining">$0.00</dd>
                 </div>
                 <div class="summary-row">
                   <dt>Utilization</dt>
-                  <dd class="tabular-nums">56.8%</dd>
+                  <dd class="tabular-nums" id="budget-summary-utilization">0%</dd>
                 </div>
               </dl>
             </article>
@@ -738,14 +531,13 @@
                 <h2 class="card-title">Budget Utilization Bar</h2>
                 <p class="card-subtitle">Visual indicator for monthly threshold tracking</p>
               </div>
-              <span class="sample-pill">Sample Data</span>
             </div>
             <div class="progress-stats-row">
-              <span class="tabular-nums"><strong>$1,420.50</strong> / $2,500.00</span>
-              <span class="progress-percent tabular-nums">56.8%</span>
+              <span class="tabular-nums" id="budget-progress-summary"><strong>$0.00</strong> / $0.00</span>
+              <span class="progress-percent tabular-nums" id="budget-progress-percent">0%</span>
             </div>
-            <div class="progress-track" role="progressbar" aria-label="Budget utilization" aria-valuenow="57" aria-valuemin="0" aria-valuemax="100">
-              <div class="progress-fill" style="width: 56.8%;"></div>
+            <div class="progress-track" role="progressbar" id="budget-progress-track" aria-label="Budget utilization" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-fill" id="budget-progress-fill" style="width: 0%;"></div>
               <span class="progress-marker" style="left: 80%;" title="80% Warning Threshold"></span>
             </div>
             <div class="progress-scale">
@@ -756,25 +548,14 @@
           </article>
 
           <!-- Budget Warning Area -->
-          <article class="card" aria-label="Budget warning alerts preview">
+          <article class="card" aria-label="Budget status and alerts">
             <div class="card-header">
               <div>
-                <h2 class="card-title">Budget Alert Thresholds</h2>
-                <p class="card-subtitle">Preview of automatic warnings triggered at 80% and 100% usage</p>
-              </div>
-              <span class="sample-pill">UI Preview</span>
-            </div>
-            <div class="alerts-stack">
-              <div class="alert-box alert-healthy">
-                <strong>Current Status (56.8%):</strong> Spending is within your monthly budget.
-              </div>
-              <div class="alert-box alert-warning">
-                <strong>80% Threshold Alert (Preview):</strong> Heads up! You have reached 80% of your monthly budget.
-              </div>
-              <div class="alert-box alert-danger">
-                <strong>100% Exceeded Alert (Preview):</strong> Budget limit reached or exceeded for the current month.
+                <h2 class="card-title">Budget Status &amp; Alerts</h2>
+                <p class="card-subtitle">Automatically alerts at 80% warning and 100% exceeded thresholds</p>
               </div>
             </div>
+            <div id="budget-alert-area" class="alerts-stack"></div>
           </article>
         </section>
 
@@ -792,21 +573,13 @@
               <div class="setting-row">
                 <div>
                   <p class="setting-name">Theme Mode</p>
-                  <p class="setting-desc">Theme persistence via localStorage will be wired in a later phase.</p>
+                  <p class="setting-desc">Preference is saved automatically in <code>spendwise_preferences</code>.</p>
                 </div>
                 <div class="segmented-control" role="group" aria-label="Theme mode selection">
-                  <button
-                    type="button"
-                    class="segment-btn is-selected"
-                    data-placeholder-action="Light theme is currently active. Theme persistence will be implemented in a later phase."
-                  >
+                  <button type="button" class="segment-btn is-selected" id="theme-light-btn" data-theme-value="light" aria-pressed="true">
                     Light
                   </button>
-                  <button
-                    type="button"
-                    class="segment-btn"
-                    data-placeholder-action="Dark theme preview and localStorage persistence will be implemented in a later phase."
-                  >
+                  <button type="button" class="segment-btn" id="theme-dark-btn" data-theme-value="dark" aria-pressed="false">
                     Dark
                   </button>
                 </div>
@@ -824,14 +597,9 @@
               <div class="setting-row">
                 <div>
                   <p class="setting-name">CSV Export</p>
-                  <p class="setting-desc">Generates a comma-separated file of your expenses.</p>
+                  <p class="setting-desc">Properly escapes commas, quotes, and special characters.</p>
                 </div>
-                <button
-                  type="button"
-                  id="export-csv-btn"
-                  class="btn btn-secondary"
-                  data-placeholder-action="CSV export will be enabled once live expense data is added in a later phase."
-                >
+                <button type="button" id="export-csv-btn" class="btn btn-secondary">
                   Export CSV
                 </button>
               </div>
@@ -849,22 +617,14 @@
                 <div>
                   <p class="setting-name">Local Storage Keys</p>
                   <p class="setting-desc">
-                    Data will be stored locally using <code>spendwise_expenses</code>, <code>spendwise_budgets</code>, and <code>spendwise_preferences</code>.
+                    Data is stored locally in <code>spendwise_expenses</code>, <code>spendwise_budgets</code>, and <code>spendwise_preferences</code>.
                   </p>
                 </div>
                 <div class="button-group">
-                  <button
-                    type="button"
-                    class="btn btn-secondary"
-                    data-placeholder-action="Sample data loader will be connected when localStorage support is implemented."
-                  >
+                  <button type="button" id="load-sample-btn" class="btn btn-secondary">
                     Load Sample Data
                   </button>
-                  <button
-                    type="button"
-                    class="btn btn-danger-outline"
-                    data-placeholder-action="Clear all data will be enabled when localStorage persistence is implemented."
-                  >
+                  <button type="button" id="clear-data-btn" class="btn btn-danger-outline">
                     Clear All Data
                   </button>
                 </div>
@@ -873,6 +633,117 @@
           </div>
         </section>
       </main>
+    </div>
+  </div>
+
+  <!-- ==================== ADD / EDIT EXPENSE MODAL ==================== -->
+  <div id="expense-modal-backdrop" class="modal-backdrop" hidden>
+    <div
+      id="expense-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="expense-modal-title"
+    >
+      <div class="modal-header">
+        <h2 id="expense-modal-title" class="modal-title">Add Expense</h2>
+        <button type="button" id="expense-modal-close-btn" class="icon-btn" aria-label="Close expense dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="expense-form" class="modal-form" novalidate>
+        <div class="modal-body">
+          <div class="form-field">
+            <label for="expense-title" class="form-label">Title <span class="required-mark">*</span></label>
+            <input type="text" id="expense-title" class="form-control" maxlength="80" placeholder="e.g. Campus Cafe &amp; Groceries" required />
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label for="expense-amount" class="form-label">Amount ($) <span class="required-mark">*</span></label>
+              <input type="number" id="expense-amount" class="form-control" min="0.01" step="0.01" placeholder="0.00" required />
+            </div>
+
+            <div class="form-field">
+              <label for="expense-date" class="form-label">Date <span class="required-mark">*</span></label>
+              <input type="date" id="expense-date" class="form-control" required />
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label for="expense-category" class="form-label">Category <span class="required-mark">*</span></label>
+              <select id="expense-category" class="form-control" required>
+                <option value="">Select category</option>
+                <option value="Food & Dining">Food &amp; Dining</option>
+                <option value="Housing & Bills">Housing &amp; Bills</option>
+                <option value="Transport">Transport</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Education">Education</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="expense-payment" class="form-label">Payment Method <span class="required-mark">*</span></label>
+              <select id="expense-payment" class="form-control" required>
+                <option value="">Select method</option>
+                <option value="UPI">UPI</option>
+                <option value="Debit Card">Debit Card</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="expense-description" class="form-label">Description <span class="optional-label">(optional)</span></label>
+            <textarea id="expense-description" class="form-control" rows="2" maxlength="200" placeholder="Add notes about this expense..."></textarea>
+          </div>
+
+          <p id="expense-form-error" class="form-error" role="alert" hidden></p>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="expense-cancel-btn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="expense-submit-btn" class="btn btn-primary">Save Expense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== CONFIRMATION MODAL ==================== -->
+  <div id="confirm-modal-backdrop" class="modal-backdrop" hidden>
+    <div
+      id="confirm-modal"
+      class="modal modal-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+    >
+      <div class="modal-header">
+        <h2 id="confirm-modal-title" class="modal-title">Confirm Action</h2>
+        <button type="button" id="confirm-close-btn" class="icon-btn" aria-label="Close confirmation dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-modal-message" class="confirm-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="confirm-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="confirm-ok-btn" class="btn btn-danger">Confirm</button>
+      </div>
     </div>
   </div>
 
