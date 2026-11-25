@@ -45,8 +45,17 @@ const CATEGORY_META = {
   Other: { short: "O", slug: "other", color: "#64748b" }
 };
 
+// LocalStorage Keys (exact schema required by architecture)
+const STORAGE_KEYS = {
+  EXPENSES: "spendwise_expenses",
+  BUDGETS: "spendwise_budgets",
+  PREFERENCES: "spendwise_preferences"
+};
+
 // Shared Application State (Single Source of Truth)
 let expenses = [];
+let budgets = {};
+let preferences = { theme: "light" };
 let editingExpenseId = null;
 let pendingConfirmAction = null;
 
@@ -252,6 +261,122 @@ function closeMobileSidebar() {
 }
 
 // ==========================================================================
+// LocalStorage Persistence (Batch 2)
+// ==========================================================================
+
+/**
+ * Safely reads and parses JSON from localStorage.
+ * Returns { data, corrupted } so corrupted values do not crash the app.
+ */
+function safeReadStorage(key, fallbackValue, validator) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) {
+      return { data: fallbackValue, corrupted: false };
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!validator(parsed)) {
+      return { data: fallbackValue, corrupted: true };
+    }
+    return { data: parsed, corrupted: false };
+  } catch (error) {
+    return { data: fallbackValue, corrupted: true };
+  }
+}
+
+/**
+ * Safely writes JSON data to localStorage with error handling.
+ */
+function safeWriteStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    showNotification("Could not save data to localStorage (storage may be full or disabled).", "error");
+    return false;
+  }
+}
+
+/**
+ * Checks whether a single expense object read from storage has valid fields.
+ */
+function isValidStoredExpense(item) {
+  return (
+    item &&
+    typeof item === "object" &&
+    typeof item.id === "string" &&
+    typeof item.title === "string" &&
+    item.title.trim() !== "" &&
+    Number.isFinite(Number(item.amount)) &&
+    Number(item.amount) > 0 &&
+    typeof item.category === "string" &&
+    typeof item.date === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(item.date) &&
+    typeof item.paymentMethod === "string"
+  );
+}
+
+/**
+ * Loads expenses, monthly budgets, and user preferences from localStorage on startup.
+ */
+function loadFromStorage() {
+  const expResult = safeReadStorage(STORAGE_KEYS.EXPENSES, [], Array.isArray);
+  const budgetResult = safeReadStorage(
+    STORAGE_KEYS.BUDGETS,
+    {},
+    (val) => val !== null && typeof val === "object" && !Array.isArray(val)
+  );
+  const prefResult = safeReadStorage(
+    STORAGE_KEYS.PREFERENCES,
+    { theme: "light" },
+    (val) => val !== null && typeof val === "object" && !Array.isArray(val)
+  );
+
+  // Filter out malformed expense entries while preserving valid ones
+  expenses = expResult.data
+    .filter(isValidStoredExpense)
+    .map((item) => ({
+      id: item.id,
+      title: item.title.trim(),
+      amount: Math.round(Number(item.amount) * 100) / 100,
+      category: CATEGORY_META[item.category] ? item.category : "Other",
+      date: item.date,
+      paymentMethod: item.paymentMethod,
+      description: typeof item.description === "string" ? item.description.trim() : ""
+    }));
+
+  // Keep only valid positive numeric month budgets
+  budgets = {};
+  Object.entries(budgetResult.data).forEach(([monthKey, value]) => {
+    const num = Number(value);
+    if (/^\d{4}-\d{2}$/.test(monthKey) && Number.isFinite(num) && num > 0) {
+      budgets[monthKey] = Math.round(num * 100) / 100;
+    }
+  });
+
+  preferences = {
+    theme: prefResult.data.theme === "dark" ? "dark" : "light"
+  };
+
+  if (expResult.corrupted || budgetResult.corrupted || prefResult.corrupted) {
+    showNotification("Some saved localStorage data was invalid and safely skipped.", "warning");
+  }
+}
+
+function saveExpenses() {
+  return safeWriteStorage(STORAGE_KEYS.EXPENSES, expenses);
+}
+
+function saveBudgets() {
+  return safeWriteStorage(STORAGE_KEYS.BUDGETS, budgets);
+}
+
+function savePreferences() {
+  return safeWriteStorage(STORAGE_KEYS.PREFERENCES, preferences);
+}
+
+// ==========================================================================
 // Expense CRUD & Validation (Batch 1)
 // ==========================================================================
 
@@ -309,6 +434,7 @@ function addExpense(expenseData) {
     ...expenseData
   };
   expenses.push(newExpense);
+  saveExpenses();
   refreshUI();
   showNotification(`Added "${newExpense.title}" (${formatCurrency(newExpense.amount)}).`, "success");
 }
@@ -327,6 +453,7 @@ function updateExpense(id, updatedData) {
     id,
     ...updatedData
   };
+  saveExpenses();
   refreshUI();
   showNotification(`Updated "${updatedData.title}".`, "success");
 }
@@ -339,6 +466,7 @@ function deleteExpense(id) {
   if (!target) return;
 
   expenses = expenses.filter((item) => item.id !== id);
+  saveExpenses();
   refreshUI();
   showNotification(`Deleted "${target.title}".`, "success");
 }
@@ -653,6 +781,7 @@ function handleExpenseFormSubmit(event) {
 
 function initApp() {
   renderCurrentDate();
+  loadFromStorage();
   refreshUI();
 
   // Global click delegation for navigation, modals, and transaction row actions
