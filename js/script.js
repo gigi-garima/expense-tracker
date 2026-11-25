@@ -35,14 +35,27 @@ const SECTION_INFO = {
 
 // Category display configuration (icon letter, tag/badge class, chart color)
 const CATEGORY_META = {
-  "Food & Dining": { short: "F", slug: "food", color: "#6d5bd0" },
-  "Housing & Bills": { short: "H", slug: "bills", color: "#4f46e5" },
-  Transport: { short: "T", slug: "transport", color: "#0d9488" },
+  Food: { short: "F", slug: "food", color: "#6d5bd0" },
+  Travel: { short: "T", slug: "transport", color: "#0d9488" },
   Shopping: { short: "S", slug: "shopping", color: "#d97706" },
   Entertainment: { short: "E", slug: "entertainment", color: "#e11d48" },
-  Healthcare: { short: "M", slug: "healthcare", color: "#16a34a" },
-  Education: { short: "B", slug: "education", color: "#0284c7" },
-  Other: { short: "O", slug: "other", color: "#64748b" }
+  Bills: { short: "B", slug: "bills", color: "#4f46e5" },
+  Health: { short: "H", slug: "healthcare", color: "#16a34a" },
+  Education: { short: "D", slug: "education", color: "#0284c7" },
+  Others: { short: "O", slug: "other", color: "#64748b" }
+};
+
+// Maps older category/payment names safely to current labels
+const LEGACY_CATEGORY_MAP = {
+  "Food & Dining": "Food",
+  "Housing & Bills": "Bills",
+  Transport: "Travel",
+  Healthcare: "Health",
+  Other: "Others"
+};
+
+const LEGACY_PAYMENT_MAP = {
+  "Bank Transfer": "Net Banking"
 };
 
 // LocalStorage Keys (exact schema required by architecture)
@@ -230,7 +243,7 @@ function formatCompactCurrency(amount) {
  * Looks up category styling metadata with a safe fallback.
  */
 function getCategoryMeta(category) {
-  return CATEGORY_META[category] || CATEGORY_META.Other;
+  return CATEGORY_META[category] || CATEGORY_META.Others;
 }
 
 /**
@@ -396,15 +409,19 @@ function loadFromStorage() {
   // Filter out malformed expense entries while preserving valid ones
   expenses = expResult.data
     .filter(isValidStoredExpense)
-    .map((item) => ({
-      id: item.id,
-      title: item.title.trim(),
-      amount: Math.round(Number(item.amount) * 100) / 100,
-      category: CATEGORY_META[item.category] ? item.category : "Other",
-      date: item.date,
-      paymentMethod: item.paymentMethod,
-      description: typeof item.description === "string" ? item.description.trim() : ""
-    }));
+    .map((item) => {
+      const normalizedCat = LEGACY_CATEGORY_MAP[item.category] || item.category;
+      const normalizedPayment = LEGACY_PAYMENT_MAP[item.paymentMethod] || item.paymentMethod;
+      return {
+        id: item.id,
+        title: item.title.trim(),
+        amount: Math.round(Number(item.amount) * 100) / 100,
+        category: CATEGORY_META[normalizedCat] ? normalizedCat : "Others",
+        date: item.date,
+        paymentMethod: normalizedPayment,
+        description: typeof item.description === "string" ? item.description.trim() : ""
+      };
+    });
 
   // Keep only valid positive numeric month budgets
   budgets = {};

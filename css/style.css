@@ -946,12 +946,12 @@ code {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 660px;
+  min-width: 560px;
 }
 
 .data-table th,
 .data-table td {
-  padding: 0.875rem 0.75rem;
+  padding: 0.75rem 0.625rem;
   text-align: left;
   border-bottom: 1px solid var(--border-subtle);
   font-size: 0.875rem;
